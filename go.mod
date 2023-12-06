@@ -1,3 +1,3 @@
 module github.com/j0sh3rs/foxtrox
 
-go 1.21.5
+go 1.21
