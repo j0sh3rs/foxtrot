@@ -29,6 +29,6 @@ go run ./main.go
 
 The script's purpose is simple, but to enable better adoption I will focus on:
 
-[ ] Enabling flags for the number of websites to choose from the list, time between queries (currently random between 1 and 45 seconds), and how long to wait between choosing new sites (1h)
-[ ] DNS Caching
-[ ] Helm Chart + Container for easy adoption/deployment onto kubernetes clusters
+- [ ] Enabling flags for the number of websites to choose from the list, time between queries (currently random between 1 and 45 seconds), and how long to wait between choosing new sites (1h)
+- [ ] DNS Caching
+- [ ] Helm Chart + Container for easy adoption/deployment onto kubernetes clusters
