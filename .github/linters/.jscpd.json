@@ -1,0 +1,9 @@
+{
+    "threshold": 0,
+    "reporters": ["console"],
+    "ignore": [
+        "main_test.go",
+        "**/.git/**",
+        "**/*.md"
+    ]
+}
