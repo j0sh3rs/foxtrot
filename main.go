@@ -1,17 +1,27 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rs/dnscache"
+	"github.com/spf13/cobra"
 )
 
-var customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0"
+var (
+	concurrency int
+	delay       int
+	userAgent   string
+)
 
 func sendRequest(client *http.Client, website string) {
 	req, err := http.NewRequest("GET", website, nil)
@@ -20,7 +30,7 @@ func sendRequest(client *http.Client, website string) {
 		return
 	}
 
-	req.Header.Set("User-Agent", customUserAgent)
+	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -61,7 +71,7 @@ func downloadWebsites(url string) ([]string, error) {
 }
 
 func selectRandomWebsites(websites []string, count int) []string {
-	rand.Seed(time.Now().UnixNano())
+	rand.NewSource(time.Now().UnixNano())
 	rand.Shuffle(len(websites), func(i, j int) {
 		websites[i], websites[j] = websites[j], websites[i]
 	})
@@ -72,29 +82,85 @@ func selectRandomWebsites(websites []string, count int) []string {
 }
 
 func main() {
+	var cmd = &cobra.Command{
+		Use:   "foxtrot",
+		Short: "A simple golang script that will help bump Firefox's overall numbers on US Gov websites",
+		Run:   run,
+	}
+
+	cmd.Flags().IntVarP(&concurrency, "concurrency", "c", 10, "Number of goroutines and random websites to select")
+	cmd.Flags().IntVarP(&delay, "delay", "d", 45, "Total time to sleep between requests in seconds")
+	cmd.Flags().StringVarP(&userAgent, "user-agent", "u", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0", "User-Agent for HTTP requests")
+
+	if err := cmd.Execute(); err != nil {
+		log.Fatalf("Command execution error: %v", err)
+	}
+}
+
+func run(cmd *cobra.Command, args []string) {
 	allWebsites, err := downloadWebsites("https://analytics.usa.gov/data/live/sites.csv")
 	if err != nil {
 		log.Fatalf("Error downloading websites: %v", err)
 	}
 
-	client := &http.Client{}
-	var wg sync.WaitGroup
+	resolver := &dnscache.Resolver{}
+	go func() {
+		for {
+			time.Sleep(10 * time.Minute)
+			resolver.Refresh(true)
+		}
+	}()
+
+	// Create a custom HTTP transport using the dnscache Resolver
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			separator := strings.LastIndex(addr, ":")
+			host := addr[:separator]
+			ips, err := resolver.LookupHost(ctx, host)
+			if err != nil {
+				return nil, err
+			}
+			if len(ips) == 0 {
+				return nil, fmt.Errorf("no IPs found for host %s", host)
+			}
+			return net.Dial(network, ips[0]+addr[separator:])
+		},
+	}
+	client := &http.Client{Transport: transport}
+
 	quit := make(chan struct{})
 	ticker := time.NewTicker(1 * time.Hour)
+
+	wg := &sync.WaitGroup{}
+	selectedWebsites := selectRandomWebsites(allWebsites, concurrency)
+
+	for _, website := range selectedWebsites {
+		wg.Add(1)
+		go func(site string) {
+			defer wg.Done()
+			for {
+				select {
+				case <-quit:
+					return
+				default:
+					sendRequest(client, site)
+					time.Sleep(time.Duration(rand.Intn(delay-1)+1) * time.Second)
+				}
+			}
+		}(website)
+	}
 
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				// Stop existing goroutines
 				close(quit)
 				quit = make(chan struct{})
-				wg = sync.WaitGroup{}
+				wg.Wait() // Wait for existing goroutines to finish
 
-				// Select 10 random websites
-				selectedWebsites := selectRandomWebsites(allWebsites, 10)
+				wg = &sync.WaitGroup{}
+				selectedWebsites = selectRandomWebsites(allWebsites, concurrency)
 
-				// Start new goroutines for the new set of websites
 				for _, website := range selectedWebsites {
 					wg.Add(1)
 					go func(site string) {
@@ -105,7 +171,7 @@ func main() {
 								return
 							default:
 								sendRequest(client, site)
-								time.Sleep(time.Duration(rand.Intn(45-1)+1) * time.Second)
+								time.Sleep(time.Duration(rand.Intn(delay-1)+1) * time.Second)
 							}
 						}
 					}(website)

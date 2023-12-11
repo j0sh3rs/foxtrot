@@ -25,10 +25,17 @@ go get
 go run ./main.go
 ```
 
+## Arguments
+
+The script supports a few input arguments to change concurrency, delay between queries, and to customize the User-Agent.
+
+An example of a custom run using all three arguments is:
+`go run . --concurrency 5 --delay 30 --user-agent "Custom User Agent/1.0"`
+
 ## Roadmap
 
 The script's purpose is simple, but to enable better adoption I will focus on:
 
-- [ ] Enabling flags for the number of websites to choose from the list, time between queries (currently random between 1 and 45 seconds), and how long to wait between choosing new sites (1h)
-- [ ] DNS Caching
+- [X] Enabling flags for the number of websites to choose from the list, time between queries (currently random between 1 and 45 seconds), and how long to wait between choosing new sites (1h)
+- [X] DNS Caching -- Reduce total load on upstream DNS when using higher concurrency
 - [ ] Helm Chart + Container for easy adoption/deployment onto kubernetes clusters
