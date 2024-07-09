@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/rs/dnscache v0.0.0-20230804202142-fc85eb664529
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 )
 
 require (
