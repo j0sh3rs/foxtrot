@@ -1,5 +1,5 @@
-// Package foxtrot is meant to help bump the numbers of the Firefox User-Agent against US Gov Websites
-package foxtrot
+// Package main is meant to help bump the numbers of the Firefox User-Agent against US Gov Websites
+package main
 
 import (
 	"context"

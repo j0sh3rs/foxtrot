@@ -1,4 +1,4 @@
-package foxtrot
+package main
 
 import (
 	"net/http"

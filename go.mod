@@ -1,4 +1,4 @@
-module github.com/j0sh3rs/foxtrox
+module github.com/j0sh3rs/foxtrot
 
 go 1.22
 
