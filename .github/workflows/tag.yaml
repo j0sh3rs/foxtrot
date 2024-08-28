@@ -24,9 +24,14 @@ jobs:
         id: changed_files
         uses: tj-actions/changed-files@v45
         with:
-          files: |
-            go.*
-            main.go
+          files_yaml: |
+            golang:
+              - '**/*.go'
+              - 'go.*'
+              - '.goreleaser.yml'
+            docker:
+              - 'Dockerfile'
+              - 'goreleaser.Dockerfile'
 
       - name: Bump version and push tag
         if: steps.changed_files.outputs.any_changed == 'true'
