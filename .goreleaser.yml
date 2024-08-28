@@ -71,8 +71,8 @@ docker_manifests:
 - name_template: ghcr.io/j0sh3rs/{{ .ProjectName }}:{{ .Version }}
   image_templates:
   - ghcr.io/j0sh3rs/{{.ProjectName}}:{{ .Version }}-amd64
-  - ghcr.io/j0sh3rs/{{.ProjectName}}:{{ .Version }}-arm64
+#  - ghcr.io/j0sh3rs/{{.ProjectName}}:{{ .Version }}-arm64
 - name_template: ghcr.io/j0sh3rs/{{ .ProjectName }}:latest
   image_templates:
   - ghcr.io/j0sh3rs/{{ .ProjectName }}:{{ .Version }}-amd64
-  - ghcr.io/j0sh3rs/{{ .ProjectName }}:{{ .Version }}-arm64
+#  - ghcr.io/j0sh3rs/{{ .ProjectName }}:{{ .Version }}-arm64
