@@ -1,5 +1,5 @@
-// Foxtrot is meant to help bump the numbers of the Firefox User-Agent against US Gov Websites
-package main
+// Package foxtrot is meant to help bump the numbers of the Firefox User-Agent against US Gov Websites
+package foxtrot
 
 import (
 	"context"
@@ -82,24 +82,8 @@ func selectRandomWebsites(websites []string, count int) []string {
 	return websites[:count]
 }
 
-func main() {
-	var cmd = &cobra.Command{
-		Use:   "foxtrot",
-		Short: "A simple golang script that will help bump Firefox's overall numbers on US Gov websites",
-		Run:   run,
-	}
-
-	cmd.Flags().IntVarP(&concurrency, "concurrency", "c", 10, "Number of goroutines and random websites to select")
-	cmd.Flags().IntVarP(&delay, "delay", "d", 45, "Total time to sleep between requests in seconds")
-	cmd.Flags().StringVarP(&userAgent, "user-agent", "u", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0", "User-Agent for HTTP requests")
-
-	if err := cmd.Execute(); err != nil {
-		log.Fatalf("Command execution error: %v", err)
-	}
-}
-
-func run(cmd *cobra.Command, args []string) {
-	allWebsites, err := downloadWebsites("https://analytics.usa.gov/data/live/sites.csv")
+func run(downloadFunc func(string) ([]string, error), sendFunc func(*http.Client, string)) {
+	allWebsites, err := downloadFunc("https://analytics.usa.gov/data/live/sites.csv")
 	if err != nil {
 		log.Fatalf("Error downloading websites: %v", err)
 	}
@@ -112,7 +96,6 @@ func run(cmd *cobra.Command, args []string) {
 		}
 	}()
 
-	// Create a custom HTTP transport using the dnscache Resolver
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			separator := strings.LastIndex(addr, ":")
@@ -144,7 +127,7 @@ func run(cmd *cobra.Command, args []string) {
 				case <-quit:
 					return
 				default:
-					sendRequest(client, site)
+					sendFunc(client, site)
 					time.Sleep(time.Duration(rand.Intn(delay-1)+1) * time.Second)
 				}
 			}
@@ -157,7 +140,7 @@ func run(cmd *cobra.Command, args []string) {
 			case <-ticker.C:
 				close(quit)
 				quit = make(chan struct{})
-				wg.Wait() // Wait for existing goroutines to finish
+				wg.Wait()
 
 				wg = &sync.WaitGroup{}
 				selectedWebsites = selectRandomWebsites(allWebsites, concurrency)
@@ -171,7 +154,7 @@ func run(cmd *cobra.Command, args []string) {
 							case <-quit:
 								return
 							default:
-								sendRequest(client, site)
+								sendFunc(client, site)
 								time.Sleep(time.Duration(rand.Intn(delay-1)+1) * time.Second)
 							}
 						}
@@ -183,4 +166,22 @@ func run(cmd *cobra.Command, args []string) {
 
 	wg.Wait()
 	ticker.Stop()
+}
+
+func main() {
+	var cmd = &cobra.Command{
+		Use:   "foxtrot",
+		Short: "A simple golang script that will help bump Firefox's overall numbers on US Gov websites",
+		Run: func(cmd *cobra.Command, args []string) {
+			run(downloadWebsites, sendRequest)
+		},
+	}
+
+	cmd.Flags().IntVarP(&concurrency, "concurrency", "c", 10, "Number of goroutines and random websites to select")
+	cmd.Flags().IntVarP(&delay, "delay", "d", 45, "Total time to sleep between requests in seconds")
+	cmd.Flags().StringVarP(&userAgent, "user-agent", "u", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:123.0) Gecko/20100101 Firefox/123.0", "User-Agent for HTTP requests")
+
+	if err := cmd.Execute(); err != nil {
+		log.Fatalf("Command execution error: %v", err)
+	}
 }
