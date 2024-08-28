@@ -30,11 +30,14 @@ jobs:
         id: changed_files
         uses: tj-actions/changed-files@v45
         with:
-          files: |
-            go.*
-            main.go
-            *goreleaser*
-            *Dockerfile
+          files_yaml: |
+            golang:
+              - '**/*.go'
+              - 'go.*'
+              - '.goreleaser.yml'
+            docker:
+              - 'Dockerfile'
+              - 'goreleaser.Dockerfile'
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
