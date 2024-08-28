@@ -56,7 +56,7 @@ jobs:
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          args: release --clean
+          args: release --clean --debug
           distribution: goreleaser
           version: latest
         env:
