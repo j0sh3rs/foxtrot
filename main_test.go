@@ -102,3 +102,39 @@ func TestRun(t *testing.T) {
 
 	time.Sleep(2 * time.Second)
 }
+
+func TestMetrics(t *testing.T) {
+	mockDownloadWebsites := func(url string) ([]string, error) {
+		return []string{"https://example.com", "https://example.org"}, nil
+	}
+
+	mockSendRequest := func(client *http.Client, website string) {
+		incrementTotalRequests()
+		if website == "https://example.com" {
+			incrementSuccessfulRequests(website)
+		} else {
+			incrementFailedRequests(website)
+		}
+	}
+
+	go func() {
+		run(mockDownloadWebsites, mockSendRequest)
+	}()
+
+	time.Sleep(2 * time.Second)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if totalRequests != 2 {
+		t.Errorf("Expected 2 total requests, got %d", totalRequests)
+	}
+
+	if successfulRequests["https://example.com"] != 1 {
+		t.Errorf("Expected 1 successful request for https://example.com, got %d", successfulRequests["https://example.com"])
+	}
+
+	if failedRequests["https://example.org"] != 1 {
+		t.Errorf("Expected 1 failed request for https://example.org, got %d", failedRequests["https://example.org"])
+	}
+}

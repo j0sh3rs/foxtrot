@@ -1,15 +1,17 @@
-// Package main is meant to help bump the numbers of the Firefox User-Agent against US Gov Websites
+// Package foxtrot is meant to help bump the numbers of the Firefox User-Agent against US Gov Websites
 package main
 
 import (
 	"context"
 	"encoding/csv"
+	"expvar"
 	"fmt"
 	"io"
 	"log"
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -19,15 +21,40 @@ import (
 )
 
 var (
-	concurrency int
-	delay       int
-	userAgent   string
+	concurrency        int
+	delay              int
+	userAgent          string
+	totalRequests      int64
+	successfulRequests map[string]int64
+	failedRequests     map[string]int64
+	mu                 sync.Mutex
+	location           *time.Location
 )
+
+func init() {
+
+	successfulRequests = make(map[string]int64)
+	failedRequests = make(map[string]int64)
+	setTimeZone()
+}
+
+func setTimeZone() {
+	tz := os.Getenv("TZ")
+	if tz == "" {
+		tz = "UTC" // Default to UTC if no timezone is set
+	}
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		log.Fatalf("Failed to load timezone %s: %v", tz, err)
+	}
+	location = loc
+}
 
 func sendRequest(client *http.Client, website string) {
 	req, err := http.NewRequest("GET", website, nil)
 	if err != nil {
 		log.Printf("Error creating request for %s: %v", website, err)
+		incrementFailedRequests(website)
 		return
 	}
 
@@ -36,11 +63,50 @@ func sendRequest(client *http.Client, website string) {
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Error sending request to %s: %v", website, err)
+		incrementFailedRequests(website)
 		return
 	}
 	defer resp.Body.Close()
 
+	incrementTotalRequests()
+	if resp.StatusCode == http.StatusOK {
+		incrementSuccessfulRequests(website)
+	} else {
+		incrementFailedRequests(website)
+	}
+
 	log.Printf("Request to %s completed with status code: %d", website, resp.StatusCode)
+}
+
+func incrementTotalRequests() {
+	mu.Lock()
+	totalRequests++
+	mu.Unlock()
+}
+
+func incrementSuccessfulRequests(website string) {
+	mu.Lock()
+	successfulRequests[website]++
+	mu.Unlock()
+}
+
+func incrementFailedRequests(website string) {
+	mu.Lock()
+	failedRequests[website]++
+	mu.Unlock()
+}
+
+func metricsHandler(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	fmt.Fprintf(w, "total_requests %d\n", totalRequests)
+	for site, count := range successfulRequests {
+		fmt.Fprintf(w, "successful_requests{website=\"%s\"} %d\n", site, count)
+	}
+	for site, count := range failedRequests {
+		fmt.Fprintf(w, "failed_requests{website=\"%s\"} %d\n", site, count)
+	}
 }
 
 func downloadWebsites(url string) ([]string, error) {
@@ -173,6 +239,10 @@ func main() {
 		Use:   "foxtrot",
 		Short: "A simple golang script that will help bump Firefox's overall numbers on US Gov websites",
 		Run: func(cmd *cobra.Command, args []string) {
+			go func() {
+				http.Handle("/metrics", expvar.Handler())
+				log.Fatal(http.ListenAndServe(":9120", nil))
+			}()
 			run(downloadWebsites, sendRequest)
 		},
 	}
