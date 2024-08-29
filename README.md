@@ -46,3 +46,4 @@ The script's purpose is simple, but to enable better adoption I will focus on:
 - [x] DNS Caching -- Reduce total load on upstream DNS when using higher concurrency
 - [x] Helm Chart + Container for easy adoption/deployment onto kubernetes clusters
 - [ ] Prometheus metrics for total queries requests made, successful and unsuccessful (e.g. non-2xx responses) counters per site
+- [ ] Fix AMD and ARM builds (only AMD supported today)
