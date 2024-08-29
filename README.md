@@ -32,10 +32,17 @@ The script supports a few input arguments to change concurrency, delay between q
 An example of a custom run using all three arguments is:
 `go run . --concurrency 5 --delay 30 --user-agent "Custom User Agent/1.0"`
 
+## Launch as a Helm Chart
+
+To deploy this on a kubernetes cluster, check out my implementation in my homelab.
+
+[https://github.com/j0sh3rs/k3s-at-home/blob/main/cluster/services/foxtrot/helm-release.yaml](https://github.com/j0sh3rs/k3s-at-home/blob/main/cluster/services/foxtrot/helm-release.yaml)
+
 ## Roadmap
 
 The script's purpose is simple, but to enable better adoption I will focus on:
 
-- [X] Enabling flags for the number of websites to choose from the list, time between queries (currently random between 1 and 45 seconds), and how long to wait between choosing new sites (1h)
-- [X] DNS Caching -- Reduce total load on upstream DNS when using higher concurrency
-- [ ] Helm Chart + Container for easy adoption/deployment onto kubernetes clusters
+- [x] Enabling flags for the number of websites to choose from the list, time between queries (currently random between 1 and 45 seconds), and how long to wait between choosing new sites (1h)
+- [x] DNS Caching -- Reduce total load on upstream DNS when using higher concurrency
+- [x] Helm Chart + Container for easy adoption/deployment onto kubernetes clusters
+- [ ] Prometheus metrics for total queries requests made, successful and unsuccessful (e.g. non-2xx responses) counters per site
