@@ -35,7 +35,7 @@ jobs:
               - 'Dockerfile'
               - 'goreleaser.Dockerfile'
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         if: steps.changed-files-yaml.outputs.test_any_changed == 'true'
         with:
           go-version: 1.22
